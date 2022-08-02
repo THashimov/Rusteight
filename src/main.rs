@@ -5,31 +5,27 @@ use keypad::{check_for_key_press, KeyStroke};
 use window_manager::WindowManager;
 
 mod cpu;
-mod rom_loader;
 mod keypad;
-mod window_manager;
+mod rom_loader;
 mod tests;
-
+mod window_manager;
 
 fn main() {
     let path = String::from("./src/ROMS/IBM.ch8");
     let rom = rom_loader::load_rom(path);
 
     let mut cpu = CPU::init_cpu();
-    cpu.ram = rom;  
+    cpu.ram = rom;
     let mut window = WindowManager::init_sdl();
 
     'running: loop {
         if check_for_key_press(&mut window.event_pump) == KeyStroke::Quit {
-            break 'running
+            break 'running;
+        // }
         } else if check_for_key_press(&mut window.event_pump) == KeyStroke::Next {
             cpu.tick();
             window.refresh(&cpu.display);
         } else {
-            
         }
     }
-    
 }
-
-

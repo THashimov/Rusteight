@@ -16,14 +16,14 @@ pub const FONT: [u8; 80] = [
     0xF0, 0x80, 0x80, 0x80, 0xF0, // C
     0xE0, 0x90, 0x90, 0x90, 0xE0, // D
     0xF0, 0x80, 0xF0, 0x80, 0xF0, // E
-    0xF0, 0x80, 0xF0, 0x80, 0x80  // F
+    0xF0, 0x80, 0xF0, 0x80, 0x80, // F
 ];
 
-pub fn load_rom(path: String) -> [u8; 4096] { 
+pub fn load_rom(path: String) -> [u8; 4096] {
     let mut rom = File::open(path).unwrap();
     let mut buf = [0u8; 3584];
     rom.read(&mut buf).unwrap();
-    
+
     let start_of_rom = load_font();
     let mut rom = [0u8; 4096];
 

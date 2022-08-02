@@ -25,7 +25,17 @@ impl CPU {
         let sound_timer = 60;
         let display = [[0u8; 64]; 32];
 
-        CPU {regs, ram, display, pc, sp, index_reg, stack, delay_timer, sound_timer}
+        CPU {
+            regs,
+            ram,
+            display,
+            pc,
+            sp,
+            index_reg,
+            stack,
+            delay_timer,
+            sound_timer,
+        }
     }
 
     pub fn tick(&mut self) {
@@ -44,25 +54,41 @@ impl CPU {
     fn execute(&mut self, inst: u16) {
         let opcode = ((inst & 0xF000) >> 12) as u8;
         let x = ((inst & 0x0F00) >> 8) as usize;
-        let y = ((inst  & 0x00F0) >> 4) as usize;
+        let y = ((inst & 0x00F0) >> 4) as usize;
         let n = (inst & 0x000F) as u8;
         let nn = (inst & 0x00FF) as u8;
         let addr = inst & 0x0FFF;
 
         // set reg 0 to 320
 
-
         match opcode {
-            0x0 => {self.cls(); println!("Clear Screen")},
-            0x1 => {self.jmp_to_addr(addr); println!("Jump to address {}", addr)},
-            0x6 => {self.set_reg_to_nn(x, nn); println!("Set reg {} to nn {} ", x, nn)},
-            0x7 => {self.add_val_to_reg(x, nn); println!("Add val {} to reg {}", nn, x)},
-            0xA => {self.set_index_reg_to_addr(addr); println!("Set index reg to addr {}", addr)},
-            0xD => {self.draw(x, y, n); println!("Draw x {} y {} n {}", x, y, n)},
+            0x0 => {
+                self.cls();
+                println!("Clear Screen")
+            }
+            0x1 => {
+                self.jmp_to_addr(addr);
+                println!("Jump to address {}", addr)
+            }
+            0x6 => {
+                self.set_reg_to_nn(x, nn);
+                println!("Set reg {} to nn {} ", x, nn)
+            }
+            0x7 => {
+                self.add_val_to_reg(x, nn);
+                println!("Add val {} to reg {}", nn, x)
+            }
+            0xA => {
+                self.set_index_reg_to_addr(addr);
+                println!("Set index reg to addr {}", addr)
+            }
+            0xD => {
+                self.draw(x, y, n);
+                println!("Draw x {} y {} n {}", x, y, n)
+            }
             _ => {}
         }
     }
-
 
     fn cls(&mut self) {
         self.display = [[0u8; 64]; 32]
@@ -92,26 +118,27 @@ impl CPU {
         // X coord = reg[x]
         // Y coord = reg[y]
 
-        let x_coord = self.regs[x] % 64;
-
         for i in 0..n {
             let y_coord = (self.regs[y] + i) % 32;
-            let byte = self.ram[self.index_reg as usize + i as usize];
+            let byte = self.ram[(self.index_reg as usize) + i as usize];
             for bit in 0..8 {
-                let bit_on = (byte >> bit) & 1;
-                self.regs[0xF] |= bit_on & self.display[y_coord as usize][x_coord as usize];
+                let x_coord = self.regs[x] + bit;
+                let byte_at_disp = self.display[y_coord as usize][x_coord as usize];
+                let pixel_to_turn_on = (byte >> (7 - bit)) & 1;
+                let current_pixel_status = (byte_at_disp >> bit) & 1;
+                if pixel_to_turn_on == 1 && current_pixel_status == 1 {
+                    self.regs[0xF] = 1;
+                }
+                self.display[y_coord as usize][x_coord as usize] ^= pixel_to_turn_on;
             }
-            self.display[y_coord as usize][x_coord as usize] ^= byte;
-            println!("{:b}", self.display[y_coord as usize][x_coord as usize]);
         }
-    }   
-
+    }
 }
 
 pub fn init_test_cpu() -> CPU {
     let path = String::from("./src/ROMS/IBM.ch8");
     let mut cpu = CPU::init_cpu();
     cpu.ram = rom_loader::load_rom(path);
-    
+
     cpu
 }

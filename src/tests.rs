@@ -1,9 +1,8 @@
 #[cfg(test)]
 mod tests {
-    use crate::{rom_loader, cpu};
     use crate::cpu::CPU;
-    
-    
+    use crate::{cpu, rom_loader};
+
     #[test]
     fn init_cpu() {
         let cpu = CPU::init_cpu();
@@ -25,7 +24,7 @@ mod tests {
 
         let font = rom_loader::FONT;
 
-        for i in 0..font.len () {
+        for i in 0..font.len() {
             assert_eq!(rom[i + 50], font[i])
         }
 
@@ -50,7 +49,7 @@ mod tests {
 
         let opcode = ((inst & 0xF000) >> 12) as u8;
         let x = ((inst & 0x0F00) >> 8) as usize;
-        let y = ((inst  & 0x00F0) >> 4) as usize;
+        let y = ((inst & 0x00F0) >> 4) as usize;
         let n = (inst & 0x000F) as u8;
         let nn = (inst & 0x00FF) as u8;
         let nnn = inst & 0x0FFF;
@@ -91,7 +90,6 @@ mod tests {
         let nn = 0xFA;
 
         cpu.regs[x] = nn;
-
     }
 
     #[test]
@@ -109,7 +107,7 @@ mod tests {
 
         assert_eq!(cpu.regs[x], 0);
     }
-   
+
     #[test]
     fn set_index_reg_to_addr() {
         let mut cpu = cpu::init_test_cpu();
@@ -124,10 +122,9 @@ mod tests {
         let byte: u8 = 0b11011001;
 
         for i in 0..8 {
-            if (byte >> i) & 1 == 1 {
+            if (byte >> (7 - i)) & 1 == 1 {
                 println!("Bit at {}, is on", i)
             }
         }
-
     }
 }
