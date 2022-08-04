@@ -12,7 +12,7 @@ impl WindowManager {
         let event_pump = sdl_context.event_pump().unwrap();
 
         let window = video_subsystem
-            .window("RustEight", 640, 320)
+            .window("RustEight", 900, 640)
             .position_centered()
             .build()
             .unwrap();

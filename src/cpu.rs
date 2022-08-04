@@ -365,7 +365,7 @@ impl CPU {
             let y_coord = (self.regs[y] + i) % 32;
             let byte = self.ram[(self.index_reg as usize) + i as usize];
             for bit in 0..8 {
-                let x_coord = self.regs[x] + bit;
+                let x_coord = (self.regs[x] + bit) %64;
                 let byte_at_disp = self.display[y_coord as usize][x_coord as usize];
                 let pixel_to_turn_on = (byte >> (7 - bit)) & 1;
                 let current_pixel_status = (byte_at_disp >> bit) & 1;
