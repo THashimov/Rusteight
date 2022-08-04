@@ -19,10 +19,13 @@ fn main() {
     let mut window = WindowManager::init_sdl();
 
     'running: loop {
-        if check_for_key_press(&mut window.event_pump) == KeyStroke::Quit {
+        let key_pressed = check_for_key_press(&mut window.event_pump);
+        cpu.set_key(&key_pressed);
+
+        if key_pressed == KeyStroke::Quit {
             break 'running;
         // }
-        } else if check_for_key_press(&mut window.event_pump) == KeyStroke::Next {
+        } else if key_pressed == KeyStroke::Next {
             cpu.tick();
             window.refresh(&cpu.display);
         } else {

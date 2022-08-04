@@ -1,6 +1,6 @@
 use sdl2::{event::Event, keyboard::Keycode, EventPump};
 
-#[derive(PartialEq)]
+#[derive(Debug, PartialEq)]
 pub enum KeyStroke {
     Quit,
     Key([u8; 16]),

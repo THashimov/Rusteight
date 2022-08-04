@@ -1,6 +1,8 @@
 #[cfg(test)]
 mod tests {
     use crate::cpu::CPU;
+    use crate::keypad::{check_for_key_press, KeyStroke};
+    use crate::window_manager::WindowManager;
     use crate::{cpu, rom_loader};
 
     #[test]
@@ -10,9 +12,9 @@ mod tests {
         assert_eq!(cpu.regs, [0u8; 16]);
         assert_eq!(cpu.ram, [0u8; 4096]);
         assert_eq!(cpu.display, [[0u8; 64]; 32]);
-        assert_eq!(cpu.pc, 0);
+        assert_eq!(cpu.pc, 0x200);
         assert_eq!(cpu.sp, 0);
-        assert_eq!(cpu.stack, []);
+        assert_eq!(cpu.stack, [0; 16]);
         assert_eq!(cpu.delay_timer, 60);
         assert_eq!(cpu.sound_timer, 60);
     }
@@ -115,6 +117,394 @@ mod tests {
         cpu.index_reg = addr;
 
         assert_eq!(cpu.index_reg, addr);
+    }
+
+    #[test]
+    fn ret() {
+        let mut cpu = cpu::init_test_cpu();
+
+        cpu.sp = 10;
+        cpu.stack[cpu.sp] = 0xAAAA;
+
+        cpu.pc = cpu.stack[cpu.sp as usize] as u16;
+        if cpu.sp > 0 {
+            cpu.sp -= 1;
+        }
+        assert_eq!(cpu.pc, 0xAAAA);
+        assert_eq!(cpu.sp, 9);
+    }
+
+    #[test]
+    fn call_addr() {
+        let mut cpu = cpu::init_test_cpu();
+
+        let addr = 0xFABB;
+
+        cpu.sp += 1;
+        cpu.stack[cpu.sp] = cpu.pc;
+        cpu.pc = addr;
+
+        assert_eq!(cpu.stack[1], 0x200);
+        assert_eq!(cpu.sp, 1);
+        assert_eq!(cpu.pc, 0xFABB);
+    }
+
+    #[test]
+    fn se_byte() {
+        let mut cpu = cpu::init_test_cpu();
+
+        let x = 5;
+        let nn = 20;
+
+        if cpu.regs[x] == nn {
+            cpu.pc += 2;
+        }
+
+        assert_eq!(cpu.pc, 0x200);
+
+        cpu.regs[5] = 20;
+
+        if cpu.regs[x] == nn {
+            cpu.pc += 2;
+        }
+
+        assert_eq!(cpu.pc, 0x202);
+    }
+
+    #[test]
+    fn sne_byte() {
+        let mut cpu = cpu::init_test_cpu();
+
+        let x = 5;
+        let nn = 20;
+
+        if cpu.regs[x] != nn {
+            cpu.pc += 2;
+        }
+
+        assert_eq!(cpu.pc, 0x202);
+
+        cpu.regs[5] = 20;
+
+        if cpu.regs[x] != nn {
+            cpu.pc += 2;
+        }
+
+        assert_eq!(cpu.pc, 0x202);
+    }
+
+    #[test]
+    fn se_reg_reg() {
+        let mut cpu = cpu::init_test_cpu();
+
+        let x = 5;
+        let y = 8;
+
+        if cpu.regs[x] == cpu.regs[y] {
+            cpu.pc += 2;
+        }
+
+        assert_eq!(cpu.pc, 0x202);
+
+        cpu.regs[5] = 20;
+
+        if cpu.regs[x] == cpu.regs[y] {
+            cpu.pc += 2;
+        }
+
+        assert_eq!(cpu.pc, 0x202);
+    }
+
+    #[test]
+    fn ld_reg_reg() {
+        let mut cpu = cpu::init_test_cpu();
+
+        // Reg x = reg y
+
+        let x = 5;
+        let y = 8;
+
+        cpu.regs[y] = 20;
+
+        cpu.regs[x] = cpu.regs[y];
+
+        assert_eq!(cpu.regs[x], 20);
+    }
+
+    #[test]
+    fn bit_or() {
+        let mut cpu = cpu::init_test_cpu();
+
+        let x = 5;
+        let y = 8;
+
+        cpu.regs[x] = 0b11011001;
+        cpu.regs[y] = 0b11111111;
+
+        cpu.regs[x] |= cpu.regs[y];
+
+        assert_eq!(cpu.regs[x], 0b11111111);
+    }
+
+    #[test]
+    fn bit_and() {
+        let mut cpu = cpu::init_test_cpu();
+
+        let x = 5;
+        let y = 8;
+
+        cpu.regs[x] = 0b11011001;
+        cpu.regs[y] = 0b11111111;
+
+        cpu.regs[x] &= cpu.regs[y];
+
+        assert_eq!(cpu.regs[x], 0b11011001);
+    }
+
+    #[test]
+    fn bit_xor() {
+        let mut cpu = cpu::init_test_cpu();
+
+        let x = 5;
+        let y = 8;
+
+        cpu.regs[x] = 0b11011001;
+        cpu.regs[y] = 0b11111111;
+
+        cpu.regs[x] ^= cpu.regs[y];
+
+        assert_eq!(cpu.regs[x], 0b00100110);
+    }
+
+    #[test]
+    fn add_reg_reg() {
+        let mut cpu = cpu::init_test_cpu();
+
+        let x = 5;
+        let y = 8;
+
+        cpu.regs[x] = 20;
+        cpu.regs[y] = 20;
+
+        let overflow = cpu.regs[x].overflowing_add(cpu.regs[y]);
+
+        if overflow.1 {
+            cpu.regs[0xF] = 1;
+        };
+
+        cpu.regs[x] = overflow.0;
+
+        assert_eq!(cpu.regs[x], 40);
+        assert_eq!(cpu.regs[0xF], 0);
+
+        cpu.regs[x] = 2;
+        cpu.regs[y] = 255;
+
+        let overflow = cpu.regs[x].overflowing_add(cpu.regs[y]);
+
+        if overflow.1 {
+            cpu.regs[0xF] = 1;
+        };
+
+        cpu.regs[x] = overflow.0;
+
+        assert_eq!(cpu.regs[x], 1);
+        assert_eq!(cpu.regs[0xF], 1);
+    }
+
+    #[test]
+    fn sub_reg_reg() {
+        let mut cpu = cpu::init_test_cpu();
+
+        let x = 5;
+        let y = 8;
+
+        cpu.regs[x] = 0;
+        cpu.regs[y] = 1;
+
+        if cpu.regs[x] > cpu.regs[y] {
+            cpu.regs[0xF] = 1;
+        }
+
+        cpu.regs[x] = cpu.regs[x].overflowing_sub(cpu.regs[y]).0;
+
+        assert_eq!(cpu.regs[x], 255);
+        assert_eq!(cpu.regs[0xF], 0);
+
+        cpu.regs[x] = 2;
+        cpu.regs[y] = 1;
+
+        if cpu.regs[x] > cpu.regs[y] {
+            cpu.regs[0xF] = 1;
+        }
+
+        cpu.regs[x] = cpu.regs[x].overflowing_sub(cpu.regs[y]).0;
+
+        assert_eq!(cpu.regs[x], 1);
+        assert_eq!(cpu.regs[0xF], 1);
+    }
+
+    #[test]
+    fn shr() {
+        let mut cpu = cpu::init_test_cpu();
+
+        let x = 5;
+        cpu.regs[x] = 0b11100101;
+
+        if cpu.regs[x] & 1 == 1 {
+            cpu.regs[0xF] = 1;
+        };
+
+        cpu.regs[x] >>= 1;
+
+        assert_eq!(cpu.regs[x], 0b01110010);
+        assert_eq!(cpu.regs[0xF], 1);
+
+        cpu.regs[x] = 0b11100100;
+
+        if cpu.regs[x] & 1 == 1 {
+            cpu.regs[0xF] = 1;
+        };
+
+        cpu.regs[x] >>= 1;
+
+        assert_eq!(cpu.regs[x], 0b01110010);
+        assert_eq!(cpu.regs[0xF], 1);
+    }
+
+    #[test]
+    fn sub_not_borrow() {
+        let mut cpu = cpu::init_test_cpu();
+
+        let x = 5;
+        let y = 8;
+
+        cpu.regs[x] = 0;
+        cpu.regs[y] = 1;
+
+        if cpu.regs[y] > cpu.regs[x] {
+            cpu.regs[0xF] = 1;
+        }
+
+        cpu.regs[x] = cpu.regs[x].overflowing_sub(cpu.regs[y]).0;
+
+        assert_eq!(cpu.regs[x], 255);
+        assert_eq!(cpu.regs[0xF], 1);
+
+        cpu.regs[0xF] = 0;
+        cpu.regs[x] = 2;
+        cpu.regs[y] = 1;
+
+        if cpu.regs[y] > cpu.regs[x] {
+            cpu.regs[0xF] = 1;
+        }
+
+        cpu.regs[x] = cpu.regs[x].overflowing_sub(cpu.regs[y]).0;
+
+        assert_eq!(cpu.regs[x], 1);
+        assert_eq!(cpu.regs[0xF], 0);
+    }
+
+    #[test]
+    fn shl() {
+        let mut cpu = cpu::init_test_cpu();
+
+        let x = 5;
+
+        cpu.regs[x] = 0b11011001;
+
+        if cpu.regs[x] >> 7 & 1 == 1 {
+            cpu.regs[0xF] = 1;
+        }
+
+        cpu.regs[x] <<= 1;
+
+        assert_eq!(cpu.regs[x], 0b10110010);
+        assert_eq!(cpu.regs[0xF], 1);
+
+        cpu.regs[0xF] = 0;
+
+        cpu.regs[x] = 0b01001101;
+
+        if cpu.regs[x] >> 7 & 1 == 1 {
+            cpu.regs[0xF] = 1;
+        }
+
+        assert_eq!(cpu.regs[0xF], 0);
+    }
+
+    #[test]
+    fn sne_reg_reg() {
+        let mut cpu = cpu::init_test_cpu();
+
+        let x = 5;
+        let y = 8;
+
+        if cpu.regs[x] != cpu.regs[y] {
+            cpu.pc += 2;
+        };
+
+        assert_eq!(cpu.pc, 0x200);
+
+        cpu.regs[x] = 10;
+
+        if cpu.regs[x] != cpu.regs[y] {
+            cpu.pc += 2;
+        };
+
+        assert_eq!(cpu.pc, 0x202);
+    }
+
+    #[test]
+    fn jmp_to_addr_reg_0() {
+        let mut cpu = cpu::init_test_cpu();
+
+        let addr = 500;
+        cpu.regs[0] = 10;
+
+        cpu.pc = cpu.regs[0] as u16 + addr;
+
+        assert_eq!(cpu.pc, 510);
+    }
+
+    #[test]
+    fn ld_dt() {
+        let mut cpu = cpu::init_test_cpu();
+
+        let x = 5;
+        cpu.delay_timer = 60;
+
+        cpu.regs[x] = cpu.delay_timer;
+
+        assert_eq!(cpu.regs[x], 60);
+    }
+
+    #[test]
+    fn ld_key() {
+        let mut cpu = cpu::init_test_cpu();
+        let mut window = WindowManager::init_sdl();
+
+        let x = 5;
+
+        'running: loop {
+            let key_pressed = check_for_key_press(&mut window.event_pump);
+            cpu.set_key(&key_pressed);
+
+            if cpu.key_pressed == [0u8; 16] {
+                cpu.pc -= 2;
+                println!("pc - 2")
+            } else {
+                println!("reg {}", cpu.regs[x]);
+                for i in 0..cpu.key_pressed.len() {
+                    if cpu.key_pressed[i] == 1 {
+                        cpu.regs[x] = i as u8;
+                        println!("reg {}", cpu.regs[x]);
+
+                        break 'running;
+                    }
+                }
+            }
+        }
     }
 
     #[test]
