@@ -468,7 +468,7 @@ mod tests {
     }
 
     #[test]
-    fn ld_dt() {
+    fn ld_dt_to_reg() {
         let mut cpu = cpu::init_test_cpu();
 
         let x = 5;
@@ -505,6 +505,119 @@ mod tests {
                 }
             }
         }
+    }
+
+    #[test]
+    fn ld_reg_to_dt() {
+        let mut cpu = cpu::init_test_cpu();
+
+        let x = 5;
+        cpu.delay_timer = 60;
+        cpu.regs[x] = 10;
+
+        cpu.delay_timer = cpu.regs[x];
+
+        assert_eq!(cpu.delay_timer, 10);
+    }
+
+    #[test]
+    fn ld_st_to_reg() {
+        let mut cpu = cpu::init_test_cpu();
+
+        let x = 5;
+        cpu.sound_timer = 60;
+
+        cpu.regs[x] = cpu.sound_timer;
+
+        assert_eq!(cpu.regs[x], 60);
+    }
+
+    #[test]
+    fn add_i_to_reg() {
+        let mut cpu = cpu::init_test_cpu();
+
+        let x = 5;
+        cpu.index_reg = 100;
+        cpu.regs[x] = 10;
+
+        cpu.index_reg += cpu.regs[x] as u16;
+
+        assert_eq!(cpu.index_reg, 110);
+    }
+
+    #[test]
+    fn ld_font() {
+        let mut cpu = cpu::init_test_cpu();
+
+        let x = 5;
+        cpu.regs[x] = 5;
+        cpu.index_reg = cpu.regs[x] as u16 * 5;
+
+        assert_eq!(cpu.index_reg, 25);
+    }
+
+    #[test]
+    fn bcd() {
+        let mut cpu = cpu::init_test_cpu();
+
+        let x = 5;
+        cpu.regs[x] = 012;
+
+        cpu.ram[cpu.index_reg as usize] = cpu.regs[x] / 100;
+        cpu.ram[cpu.index_reg as usize + 1] = (cpu.regs[x] % 100) / 10;
+        cpu.ram[cpu.index_reg as usize + 2] = cpu.regs[x] % 10;
+
+        assert_eq!(cpu.ram[cpu.index_reg as usize], 0);
+        assert_eq!(cpu.ram[cpu.index_reg as usize + 1], 1);
+        assert_eq!(cpu.ram[cpu.index_reg as usize + 2], 2);
+    }   
+
+    #[test]
+    fn ld_reg_to_ram() {
+        let mut cpu = cpu::init_test_cpu();
+
+        let x = 5;
+        cpu.regs[0] = 1;
+        cpu.regs[1] = 2;
+        cpu.regs[2] = 3;
+        cpu.regs[3] = 4;
+        cpu.regs[4] = 5;
+
+
+        for i in 0..x {
+            cpu.ram[cpu.index_reg as usize + i] = cpu.regs[i];
+        }
+
+        assert_eq!(cpu.ram[0], 1);
+        assert_eq!(cpu.ram[1], 2);
+        assert_eq!(cpu.ram[2], 3);
+        assert_eq!(cpu.ram[3], 4);
+        assert_eq!(cpu.ram[4], 5);
+
+    }
+    
+    #[test]
+    fn ld_ram_to_reg() {
+        let mut cpu = cpu::init_test_cpu();
+
+        let x = 5;
+
+        cpu.ram[0] = 1;
+        cpu.ram[1] = 2;
+        cpu.ram[2] = 3;
+        cpu.ram[3] = 4;
+        cpu.ram[4] = 5;
+
+        for i in 0..x {
+            cpu.regs[i] = cpu.ram[cpu.index_reg as usize + i];
+        }
+
+        assert_eq!(cpu.regs[0], 1);
+        assert_eq!(cpu.regs[1], 2);
+        assert_eq!(cpu.regs[2], 3);
+        assert_eq!(cpu.regs[3], 4);
+        assert_eq!(cpu.regs[4], 5);
+
     }
 
     #[test]

@@ -186,12 +186,40 @@ impl CPU {
             },
             0xF => match nn {
                 0x07 => {
-                    self.ld_dt(x);
+                    self.ld_dt_to_reg(x);
                     println!("Load value of delay timer into reg {}", x);
                 }
                 0x0A => {
                     self.ld_key(x);
                     println!("Wait for key press and store value in reg {}", x);
+                }
+                0x15 => {
+                    self.ld_reg_to_dt(x);
+                    println!("Load reg {} to delay timer", x);
+                }
+                0x18 => {
+                    self.ld_st_to_reg(x);
+                    println!("Load sound timer to reg {}", x);
+                }
+                0x1E => { 
+                    self.add_i_to_reg(x);
+                    println!("Index reg = index reg + reg {}", x);
+                }
+                0x29 => {
+                    self.ld_font(x);
+                    println!("load font at location reg {} to index reg", x);
+                }
+                0x33 => { 
+                    self.bcd(x);
+                    println!("Store value of reg {} as bcd in index reg", x);
+                }
+                0x55 => { 
+                    self.ld_reg_to_ram(x);
+                    println!("Store values of reg 0 to reg {} in ram", x);
+                }
+                0x65 => { 
+                    self.ld_ram_to_reg(x);
+                    println!("Load ram into reg 0 to reg {}", x);
                 }
                 _ => {}
             },
@@ -361,7 +389,7 @@ impl CPU {
         }
     }
 
-    fn ld_dt(&mut self, x: usize) {
+    fn ld_dt_to_reg(&mut self, x: usize) {
         self.regs[x] = self.delay_timer;
     }
 
@@ -376,6 +404,41 @@ impl CPU {
             }
         }
     }
+
+    fn ld_reg_to_dt(&mut self, x: usize) {
+        self.delay_timer = self.regs[x];
+    }
+
+    fn ld_st_to_reg(&mut self, x: usize) {
+        self.sound_timer = self.regs[x];
+    }
+
+    fn add_i_to_reg(&mut self, x: usize) {
+        self.index_reg += self.regs[x] as u16;
+    }
+
+    fn ld_font(&mut self, x: usize,) {
+        self.index_reg = self.regs[x] as u16 * 5;
+    }
+
+    fn bcd(&mut self, x: usize) {
+        self.ram[self.index_reg as usize] = self.regs[x] / 100;
+        self.ram[self.index_reg as usize + 1] = (self.regs[x] % 100) / 10;
+        self.ram[self.index_reg as usize + 2] = self.regs[x] % 10;
+    }
+
+    fn ld_reg_to_ram(&mut self, x: usize) {
+        for i in 0..x {
+            self.ram[self.index_reg as usize + i] = self.regs[i];
+        }
+    }
+
+    fn ld_ram_to_reg(&mut self, x: usize) {
+        for i in 0..x {
+            self.regs[i] = self.ram[self.index_reg as usize + i];
+        }
+    }
+
 }
 
 pub fn init_test_cpu() -> CPU {
