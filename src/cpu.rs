@@ -43,10 +43,10 @@ impl CPU {
         }
     }
 
-    pub fn tick(&mut self) {
+    pub fn tick(&mut self) -> String {
         let inst = self.fetch();
         self.pc += 2;
-        self.execute(inst);
+        self.execute(inst)
     }
 
     pub fn set_key(&mut self, key: &KeyStroke) {
@@ -64,7 +64,7 @@ impl CPU {
         hi << 8 | lo
     }
 
-    fn execute(&mut self, inst: u16) {
+    fn execute(&mut self, inst: u16) -> String {
         let opcode = ((inst & 0xF000) >> 12) as u8;
         let x = ((inst & 0x0F00) >> 8) as usize;
         let y = ((inst & 0x00F0) >> 4) as usize;
@@ -72,159 +72,158 @@ impl CPU {
         let nn = (inst & 0x00FF) as u8;
         let addr = inst & 0x0FFF;
 
-        // set reg 0 to 320
-
         match opcode {
             0x0 => match n {
                 0x0 => {
                     self.cls();
-                    println!("Clear Screen");
+                    return format!("Clear Screen")
                 }
                 0xE => {
                     self.ret();
-                    println!("Return from subroutine");
+                    return format!("Return from subroutine");
                 }
                 _ => {}
             },
             0x1 => {
                 self.jmp_to_addr(addr);
-                println!("Jump to {:x}", addr);
+                return format!("Jump to {:x}", addr);
             }
             0x2 => {
                 self.call_addr(addr);
-                println!("Call subroutine at {:x}", addr);
+                return format!("Call subroutine at {:x}", addr);
             }
             0x3 => {
                 self.se_byte(x, nn);
-                println!("Skip if reg {} is equal to {}", x, nn);
+                return format!("Skip if reg {} is equal to {}", x, nn);
             }
             0x4 => {
                 self.sne_byte(x, nn);
-                println!("Skip if reg {} is not equal to {}", x, nn);
+                return format!("Skip if reg {} is not equal to {}", x, nn);
             }
             0x5 => {
                 self.se_reg_reg(x, y);
-                println!("Skip if reg {} is not equal to reg {}", x, y);
+                return format!("Skip if reg {} is not equal to reg {}", x, y);
             }
             0x6 => {
                 self.set_reg_to_nn(x, nn);
-                println!("Set reg {} to nn {} ", x, nn);
+                return format!("Set reg {} to nn {} ", x, nn);
             }
             0x7 => {
                 self.add_val_to_reg(x, nn);
-                println!("Add val {} to reg {}", nn, x);
+                return format!("Add val {} to reg {}", nn, x);
             }
             0x8 => match n {
                 0x0 => {
                     self.ld_reg_reg(x, y);
-                    println!("Set reg {} to reg {}", x, y);
+                    return format!("Set reg {} to reg {}", x, y);
                 }
                 0x1 => {
                     self.bit_or(x, y);
-                    println!("Bitwise OR {} to {}", x, y);
+                    return format!("Bitwise OR {} to {}", x, y);
                 }
                 0x2 => {
                     self.bit_and(x, y);
-                    println!("Bitwise AND {} to {}", x, y,);
+                    return format!("Bitwise AND {} to {}", x, y,);
                 }
                 0x3 => {
                     self.bit_xor(x, y);
-                    println!("Bitwise XOR {} to {}", x, y);
+                    return format!("Bitwise XOR {} to {}", x, y);
                 }
                 0x4 => {
                     self.add_reg_reg(x, y);
-                    println!("Add reg {} to reg {}", y, x);
+                    return format!("Add reg {} to reg {}", y, x);
                 }
                 0x5 => {
                     self.sub_reg_reg(x, y);
-                    println!("Sub reg {} from {}", y, x);
+                    return format!("Sub reg {} from {}", y, x);
                 }
                 0x6 => {
                     self.shr(x);
-                    println!("Shift reg {} right by one", x);
+                    return format!("Shift reg {} right by one", x);
                 }
                 0x7 => {
                     self.sub_not_borrow(x, y);
-                    println!("Sub not borrow {} from {}", y, x);
+                    return format!("Sub not borrow {} from {}", y, x);
                 }
                 0xE => {
                     self.shl(x);
-                    println!("Shift reg {} left by one", x);
+                    return format!("Shift reg {} left by one", x);
                 }
                 _ => {}
             },
             0x9 => {
                 self.sne_reg_reg(x, y);
-                println!("Skip if reg {} != {}", x, y);
+                return format!("Skip if reg {} != {}", x, y);
             }
             0xA => {
                 self.set_index_reg_to_addr(addr);
-                println!("Set index reg to addr {}", addr)
+                return format!("Set index reg to addr {}", addr)
             }
             0xB => {
                 self.jmp_to_addr_reg_0(addr);
-                println!("Jump to addr {} + reg 0", addr)
+                return format!("Jump to addr {} + reg 0", addr)
             }
             0xC => {
                 self.rnd_num(x, nn);
-                println!("Set reg {} to random number & {}", x, nn);
+                return format!("Set reg {} to random number & {}", x, nn);
             }
             0xD => {
                 self.draw(x, y, n);
-                println!("Draw x {} y {} n {}", x, y, n)
+                return format!("Draw x {} y {} n {}", x, y, n)
             }
             0xE => match n {
                 0xE => {
                     self.skp(x);
-                    println!("Skip if key with value at reg {} is pressed", x)
+                    return format!("Skip if key with value at reg {} is pressed", x)
                 }
                 0x1 => {
                     self.sknp(x);
-                    println!("Skip if key with value at reg {} is not pressed", x)
+                    return format!("Skip if key with value at reg {} is not pressed", x)
                 }
                 _ => {}
             },
             0xF => match nn {
                 0x07 => {
                     self.ld_dt_to_reg(x);
-                    println!("Load value of delay timer into reg {}", x);
+                    return format!("Load value of delay timer into reg {}", x);
                 }
                 0x0A => {
                     self.ld_key(x);
-                    println!("Wait for key press and store value in reg {}", x);
+                    return format!("Wait for key press and store value in reg {}", x);
                 }
                 0x15 => {
                     self.ld_reg_to_dt(x);
-                    println!("Load reg {} to delay timer", x);
+                    return format!("Load reg {} to delay timer", x);
                 }
                 0x18 => {
                     self.ld_st_to_reg(x);
-                    println!("Load sound timer to reg {}", x);
+                    return format!("Load sound timer to reg {}", x);
                 }
                 0x1E => { 
                     self.add_i_to_reg(x);
-                    println!("Index reg = index reg + reg {}", x);
+                    return format!("Index reg = index reg + reg {}", x);
                 }
                 0x29 => {
                     self.ld_font(x);
-                    println!("load font at location reg {} to index reg", x);
+                    return format!("load font at location reg {} to index reg", x);
                 }
                 0x33 => { 
                     self.bcd(x);
-                    println!("Store value of reg {} as bcd in index reg", x);
+                    return format!("Store value of reg {} as bcd in index reg", x);
                 }
                 0x55 => { 
                     self.ld_reg_to_ram(x);
-                    println!("Store values of reg 0 to reg {} in ram", x);
+                    return format!("Store values of reg 0 to reg {} in ram", x);
                 }
                 0x65 => { 
                     self.ld_ram_to_reg(x);
-                    println!("Load ram into reg 0 to reg {}", x);
+                    return format!("Load ram into reg 0 to reg {}", x);
                 }
                 _ => {}
             },
             _ => {}
         }
+        String::from("")
     }
 
     fn cls(&mut self) {
@@ -428,19 +427,29 @@ impl CPU {
     }
 
     fn ld_reg_to_ram(&mut self, x: usize) {
-        for i in 0..x {
+        if x == 0 {
+            self.ram[self.index_reg as usize] = self.regs[0];
+
+        }
+
+        for i in 0..x + 1 {
             self.ram[self.index_reg as usize + i] = self.regs[i];
         }
     }
 
     fn ld_ram_to_reg(&mut self, x: usize) {
-        for i in 0..x {
+        if x == 0 {
+            self.regs[0] = self.ram[self.index_reg as usize];
+        }
+
+        for i in 0..x + 1 {
             self.regs[i] = self.ram[self.index_reg as usize + i];
         }
     }
 
 }
 
+#[allow(dead_code)]
 pub fn init_test_cpu() -> CPU {
     let path = String::from("./src/ROMS/IBM.ch8");
     let mut cpu = CPU::init_cpu();

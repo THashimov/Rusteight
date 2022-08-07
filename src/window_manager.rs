@@ -1,8 +1,9 @@
-use sdl2::{pixels::Color, rect::Rect, render::Canvas, video::Window, EventPump};
+use sdl2::{pixels::Color, rect::Rect, render::{Canvas, TextureCreator}, video::{Window, WindowContext}, EventPump, ttf::Font};
 
 pub struct WindowManager {
     pub canvas: Canvas<Window>,
     pub event_pump: EventPump,
+    pub texture_creator: TextureCreator<WindowContext>
 }
 
 impl WindowManager {
@@ -12,22 +13,21 @@ impl WindowManager {
         let event_pump = sdl_context.event_pump().unwrap();
 
         let window = video_subsystem
-            .window("RustEight", 900, 640)
+            .window("RustEight", 1500, 640)
             .position_centered()
             .build()
             .unwrap();
 
         let canvas = window.into_canvas().build().unwrap();
 
-        WindowManager { canvas, event_pump }
+        let texture_creator = canvas.texture_creator();
+
+        WindowManager { canvas, event_pump, texture_creator }
     }
 
-    pub fn refresh(&mut self, display: &[[u8; 64]; 32]) {
+    pub fn refresh(&mut self, display: &[[u8; 64]; 32], font: &Font, instruction: &str) {
         self.canvas.set_draw_color(Color::RGB(0, 0, 0));
-
         self.canvas.clear();
-        self.canvas.present();
-
         self.canvas.set_draw_color(Color::RGB(0, 255, 0));
 
         for x_coord in 0..64 {
@@ -48,6 +48,25 @@ impl WindowManager {
                 }
             }
         }
+        self.render_instruction(&font, &instruction);
         self.canvas.present();
+    }
+
+    pub fn render_instruction(&mut self, font: &Font, text: &str) {
+        let surface = font.render(&text).blended(Color::RGB(255, 255, 255));
+
+        let surface = match surface {
+            Ok(surface) => surface,
+            Err(error) => panic!("{:?}", error),
+        };
+
+        let texture = 
+            self.texture_creator
+            .create_texture_from_surface(&surface)
+            .unwrap();
+
+        let rect = Rect::new(700, 0, (text.len() * 10) as u32, 50);
+
+        self.canvas.copy(&texture, None, Some(rect)).unwrap();
     }
 }

@@ -582,9 +582,14 @@ mod tests {
         cpu.regs[2] = 3;
         cpu.regs[3] = 4;
         cpu.regs[4] = 5;
+        cpu.regs[5] = 6;
 
 
-        for i in 0..x {
+        if x == 0 {
+            cpu.ram[cpu.index_reg as usize] = cpu.regs[0];
+        }
+
+        for i in 0..x + 1{
             cpu.ram[cpu.index_reg as usize + i] = cpu.regs[i];
         }
 
@@ -593,6 +598,7 @@ mod tests {
         assert_eq!(cpu.ram[2], 3);
         assert_eq!(cpu.ram[3], 4);
         assert_eq!(cpu.ram[4], 5);
+        assert_eq!(cpu.ram[5], 6);
 
     }
     
@@ -607,8 +613,14 @@ mod tests {
         cpu.ram[2] = 3;
         cpu.ram[3] = 4;
         cpu.ram[4] = 5;
+        cpu.ram[5] = 6;
 
-        for i in 0..x {
+
+        if x == 0 {
+            cpu.regs[0] = cpu.ram[cpu.index_reg as usize];
+        }
+
+        for i in 0..x + 1 {
             cpu.regs[i] = cpu.ram[cpu.index_reg as usize + i];
         }
 
@@ -617,6 +629,7 @@ mod tests {
         assert_eq!(cpu.regs[2], 3);
         assert_eq!(cpu.regs[3], 4);
         assert_eq!(cpu.regs[4], 5);
+        assert_eq!(cpu.regs[5], 6);
 
     }
 
