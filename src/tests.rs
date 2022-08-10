@@ -487,16 +487,16 @@ mod tests {
         let x = 5;
 
         'running: loop {
-            let key_pressed = check_for_key_press(&mut window.event_pump);
-            cpu.set_key(&key_pressed);
+            let keypad = check_for_key_press(&mut window.event_pump, &mut cpu);
+            cpu.set_key(&keypad);
 
-            if cpu.key_pressed == [0u8; 16] {
+            if cpu.keypad == [0u8; 16] {
                 cpu.pc -= 2;
                 println!("pc - 2")
             } else {
                 println!("reg {}", cpu.regs[x]);
-                for i in 0..cpu.key_pressed.len() {
-                    if cpu.key_pressed[i] == 1 {
+                for i in 0..cpu.keypad.len() {
+                    if cpu.keypad[i] == 1 {
                         cpu.regs[x] = i as u8;
                         println!("reg {}", cpu.regs[x]);
 

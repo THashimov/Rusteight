@@ -13,7 +13,8 @@ pub struct CPU {
     pub stack: [u16; 16],
     pub delay_timer: u8,
     pub sound_timer: u8,
-    pub key_pressed: [u8; 16],
+    pub keypad: [u8; 16],
+    pub key_pressed: bool,
 }
 
 impl CPU {
@@ -27,7 +28,8 @@ impl CPU {
         let delay_timer = 60;
         let sound_timer = 60;
         let display = [[0u8; 64]; 32];
-        let key_pressed = [0u8; 16];
+        let keypad = [0u8; 16];
+        let key_pressed = false;
 
         CPU {
             regs,
@@ -39,6 +41,7 @@ impl CPU {
             stack,
             delay_timer,
             sound_timer,
+            keypad,
             key_pressed,
         }
     }
@@ -52,7 +55,7 @@ impl CPU {
     pub fn set_key(&mut self, key: &KeyStroke) {
         match key {
             KeyStroke::Quit => {}
-            KeyStroke::Key(k) => self.key_pressed = *k,
+            KeyStroke::Key(k) => self.keypad = *k,
             KeyStroke::Next => {}
         }
     }
@@ -76,7 +79,7 @@ impl CPU {
             0x0 => match n {
                 0x0 => {
                     self.cls();
-                    return format!("Clear Screen")
+                    return format!("Clear Screen");
                 }
                 0xE => {
                     self.ret();
@@ -157,11 +160,11 @@ impl CPU {
             }
             0xA => {
                 self.set_index_reg_to_addr(addr);
-                return format!("Set index reg to addr {}", addr)
+                return format!("Set index reg to addr {}", addr);
             }
             0xB => {
                 self.jmp_to_addr_reg_0(addr);
-                return format!("Jump to addr {} + reg 0", addr)
+                return format!("Jump to addr {} + reg 0", addr);
             }
             0xC => {
                 self.rnd_num(x, nn);
@@ -169,16 +172,16 @@ impl CPU {
             }
             0xD => {
                 self.draw(x, y, n);
-                return format!("Draw x {} y {} n {}", x, y, n)
+                return format!("Draw x {} y {} n {}", x, y, n);
             }
             0xE => match n {
                 0xE => {
                     self.skp(x);
-                    return format!("Skip if key with value at reg {} is pressed", x)
+                    return format!("Skip if key with value at reg {} is pressed", x);
                 }
                 0x1 => {
                     self.sknp(x);
-                    return format!("Skip if key with value at reg {} is not pressed", x)
+                    return format!("Skip if key with value at reg {} is not pressed", x);
                 }
                 _ => {}
             },
@@ -199,7 +202,7 @@ impl CPU {
                     self.ld_st_to_reg(x);
                     return format!("Load sound timer to reg {}", x);
                 }
-                0x1E => { 
+                0x1E => {
                     self.add_i_to_reg(x);
                     return format!("Index reg = index reg + reg {}", x);
                 }
@@ -207,15 +210,15 @@ impl CPU {
                     self.ld_font(x);
                     return format!("load font at location reg {} to index reg", x);
                 }
-                0x33 => { 
+                0x33 => {
                     self.bcd(x);
                     return format!("Store value of reg {} as bcd in index reg", x);
                 }
-                0x55 => { 
+                0x55 => {
                     self.ld_reg_to_ram(x);
                     return format!("Store values of reg 0 to reg {} in ram", x);
                 }
-                0x65 => { 
+                0x65 => {
                     self.ld_ram_to_reg(x);
                     return format!("Load ram into reg 0 to reg {}", x);
                 }
@@ -355,16 +358,11 @@ impl CPU {
     fn draw(&mut self, x: usize, y: usize, n: u8) {
         self.regs[0xF] = 0;
 
-        // N is the height of the sprite. Display is 32 high
-        // Draw from mem location Index reg
-        // X coord = reg[x]
-        // Y coord = reg[y]
-
         for i in 0..n {
             let y_coord = (self.regs[y] + i) % 32;
             let byte = self.ram[(self.index_reg as usize) + i as usize];
             for bit in 0..8 {
-                let x_coord = (self.regs[x] + bit) %64;
+                let x_coord = (self.regs[x].overflowing_add(bit).0) % 64;
                 let byte_at_disp = self.display[y_coord as usize][x_coord as usize];
                 let pixel_to_turn_on = (byte >> (7 - bit)) & 1;
                 let current_pixel_status = (byte_at_disp >> bit) & 1;
@@ -377,13 +375,13 @@ impl CPU {
     }
 
     fn skp(&mut self, x: usize) {
-        if self.key_pressed[self.regs[x] as usize] == 1 {
+        if self.keypad[self.regs[x] as usize] == 1 {
             self.pc += 2;
         }
     }
 
     fn sknp(&mut self, x: usize) {
-        if self.key_pressed[self.regs[x] as usize] != 1 {
+        if self.keypad[self.regs[x] as usize] != 1 {
             self.pc += 2;
         }
     }
@@ -393,11 +391,11 @@ impl CPU {
     }
 
     fn ld_key(&mut self, x: usize) {
-        if self.key_pressed == [0u8; 16] {
+        if self.keypad == [0u8; 16] {
             self.pc -= 2;
         } else {
-            for i in 0..self.key_pressed.len() {
-                if self.key_pressed[i] == 1 {
+            for i in 0..self.keypad.len() {
+                if self.keypad[i] == 1 {
                     self.regs[x] = i as u8;
                 }
             }
@@ -416,7 +414,7 @@ impl CPU {
         self.index_reg += self.regs[x] as u16;
     }
 
-    fn ld_font(&mut self, x: usize,) {
+    fn ld_font(&mut self, x: usize) {
         self.index_reg = self.regs[x] as u16 * 5;
     }
 
@@ -429,7 +427,6 @@ impl CPU {
     fn ld_reg_to_ram(&mut self, x: usize) {
         if x == 0 {
             self.ram[self.index_reg as usize] = self.regs[0];
-
         }
 
         for i in 0..x + 1 {
@@ -446,7 +443,6 @@ impl CPU {
             self.regs[i] = self.ram[self.index_reg as usize + i];
         }
     }
-
 }
 
 #[allow(dead_code)]
